@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// SalesController.cs
+using Microsoft.AspNetCore.Mvc;
 using Backend.Data.Repositories;
 using Backend.Models;
 
@@ -87,10 +88,8 @@ namespace Backend.Controllers
                     sale.SaleDate = DateTime.Now;
                 }
 
-                if (sale.UpdatedDate == null)
-                {
-                    sale.UpdatedDate = DateTime.Now;
-                }
+                // DO NOT set UpdatedDate for new sales - let the stored procedure handle it
+                sale.UpdatedDate = null;
 
                 var createdSale = await _saleRepository.CreateSaleAsync(sale);
                 return CreatedAtAction(nameof(GetSale), new { id = createdSale.SaleId }, createdSale);
@@ -122,14 +121,12 @@ namespace Backend.Controllers
                 return NotFound();
             }
 
-            // Update the UpdateDate
-            sale.UpdatedDate = DateTime.Now;
-
+            // The stored procedure will handle setting UpdatedDate automatically
             var success = await _saleRepository.UpdateSaleAsync(sale);
 
             if (!success)
             {
-                return BadRequest("Failed to update sale");
+                return BadRequest("Failed to update sale. The sale may have related sale details or other dependencies that prevent modification.");
             }
 
             return NoContent();
@@ -148,7 +145,7 @@ namespace Backend.Controllers
 
             if (!success)
             {
-                return BadRequest("Failed to delete sale");
+                return BadRequest("Cannot delete sale. This sale has associated sale details or is referenced by other records in the database. Please delete related sale details first.");
             }
 
             return NoContent();

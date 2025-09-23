@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// SaleDetailsController.cs
+using Microsoft.AspNetCore.Mvc;
 using Backend.Data.Repositories;
 using Backend.Models;
 
@@ -126,7 +127,7 @@ namespace Backend.Controllers
 
             if (!success)
             {
-                return BadRequest("Failed to update sale detail");
+                return BadRequest("Failed to update sale detail. The sale detail may be referenced by other records or does not exist.");
             }
 
             return NoContent();
@@ -145,7 +146,7 @@ namespace Backend.Controllers
 
             if (!success)
             {
-                return BadRequest("Failed to delete sale detail");
+                return BadRequest("Cannot delete sale detail. This record may be referenced by other transactions in the database.");
             }
 
             return NoContent();
@@ -159,7 +160,7 @@ namespace Backend.Controllers
 
             if (!success)
             {
-                return BadRequest("Failed to delete sale details");
+                return BadRequest("Cannot delete sale details. These records may be referenced by other transactions in the database.");
             }
 
             return NoContent();

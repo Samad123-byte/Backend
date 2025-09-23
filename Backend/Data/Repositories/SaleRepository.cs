@@ -83,7 +83,7 @@ namespace Backend.Data.Repositories
         {
             using (var connection = new SqlConnection(_connectionString))
             {
-                using (var command = new SqlCommand("sp_InsertSale", connection))
+                using (var command = new SqlCommand("sp_CreateSale", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.AddWithValue("@Total", sale.Total);
@@ -92,14 +92,20 @@ namespace Backend.Data.Repositories
                     command.Parameters.AddWithValue("@Comments", (object?)sale.Comments ?? DBNull.Value);
 
                     await connection.OpenAsync();
-                    var result = await command.ExecuteScalarAsync();
-
-                    if (result != null)
+                    using (var reader = await command.ExecuteReaderAsync())
                     {
-                        int newSaleId = Convert.ToInt32(result);
-
-                        // Get the newly created sale to return it
-                        return await GetSaleByIdAsync(newSaleId) ?? throw new Exception("Failed to retrieve created sale");
+                        if (await reader.ReadAsync())
+                        {
+                            return new Sale
+                            {
+                                SaleId = reader.GetInt32("SaleId"),
+                                Total = reader.GetDecimal("Total"),
+                                SaleDate = reader.GetDateTime("SaleDate"),
+                                SalespersonId = reader.IsDBNull("SalespersonId") ? null : reader.GetInt32("SalespersonId"),
+                                Comments = reader.IsDBNull("Comments") ? null : reader.GetString("Comments"),
+                                UpdatedDate = reader.IsDBNull("UpdatedDate") ? null : reader.GetDateTime("UpdatedDate")
+                            };
+                        }
                     }
                 }
             }
@@ -121,11 +127,17 @@ namespace Backend.Data.Repositories
                     command.Parameters.AddWithValue("@Comments", (object?)sale.Comments ?? DBNull.Value);
 
                     await connection.OpenAsync();
-                    int rowsAffected = await command.ExecuteNonQueryAsync();
-
-                    return rowsAffected > 0;
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            return reader.GetInt32("Success") == 1;
+                        }
+                    }
                 }
             }
+
+            return false;
         }
 
         public async Task<bool> DeleteSaleAsync(int id)
@@ -138,11 +150,17 @@ namespace Backend.Data.Repositories
                     command.Parameters.AddWithValue("@SaleId", id);
 
                     await connection.OpenAsync();
-                    int rowsAffected = await command.ExecuteNonQueryAsync();
-
-                    return rowsAffected > 0;
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            return reader.GetInt32("Success") == 1;
+                        }
+                    }
                 }
             }
+
+            return false;
         }
 
         public async Task<bool> SaleExistsAsync(int id)

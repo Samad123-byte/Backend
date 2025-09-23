@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿
+// ProductsController.cs
+using Microsoft.AspNetCore.Mvc;
 using Backend.Data.Repositories;
 using Backend.Models;
 
@@ -83,7 +85,7 @@ namespace Backend.Controllers
 
             if (!success)
             {
-                return BadRequest("Failed to update product");
+                return BadRequest("Failed to update product. The product may be referenced in existing sales or other dependencies that prevent modification.");
             }
 
             return NoContent();
@@ -102,7 +104,7 @@ namespace Backend.Controllers
 
             if (!success)
             {
-                return BadRequest("Failed to delete product");
+                return BadRequest("Cannot delete product. This product is referenced in existing sale details. Please remove it from all sales before deleting the product.");
             }
 
             return NoContent();

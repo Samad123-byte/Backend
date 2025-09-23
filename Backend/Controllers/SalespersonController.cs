@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿
+// SalespersonController.cs
+using Microsoft.AspNetCore.Mvc;
 using Backend.Data.Repositories;
 using Backend.Models;
 
@@ -111,7 +113,7 @@ namespace Backend.Controllers
 
             if (!success)
             {
-                return BadRequest("Failed to update salesperson");
+                return BadRequest("Failed to update salesperson. The salesperson may have associated sales or other dependencies that prevent modification.");
             }
 
             return NoContent();
@@ -130,7 +132,7 @@ namespace Backend.Controllers
 
             if (!success)
             {
-                return BadRequest("Failed to delete salesperson");
+                return BadRequest("Cannot delete salesperson. This salesperson has associated sales records in the database. Please reassign or delete the sales first before removing this salesperson.");
             }
 
             return NoContent();

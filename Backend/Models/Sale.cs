@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Backend.Models
 {
-    [Table("SalesMaster")]
+    [Table("Sales")] // Fixed: Changed from "SalesMaster" to "Sales" to match stored procedures
     public class Sale
     {
         [Key]
@@ -18,7 +18,7 @@ namespace Backend.Models
 
         public int? SalespersonId { get; set; }
 
-        [StringLength(255)]
+        [StringLength(500)] // Updated to match stored procedure parameter length
         public string? Comments { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
