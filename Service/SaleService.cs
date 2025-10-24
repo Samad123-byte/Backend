@@ -1,6 +1,7 @@
-﻿using Backend.IRepository;
+using Backend.IRepository;
 using Backend.IServices;
 using Backend.Models;
+using Microsoft.Data.SqlClient;
 
 namespace Backend.Service
 {
@@ -25,17 +26,50 @@ namespace Backend.Service
 
         public async Task<Sale> CreateSaleAsync(Sale sale)
         {
-            return await _saleRepository.CreateSaleAsync(sale);
+            try
+            {
+                return await _saleRepository.CreateSaleAsync(sale);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    547 => new InvalidOperationException("Cannot create sale. The referenced salesperson does not exist."),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> UpdateSaleAsync(Sale sale)
         {
-            return await _saleRepository.UpdateSaleAsync(sale);
+            try
+            {
+                return await _saleRepository.UpdateSaleAsync(sale);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    547 => new InvalidOperationException("Cannot update sale. The referenced salesperson does not exist or sale has dependencies."),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> DeleteSaleAsync(int id)
         {
-            return await _saleRepository.DeleteSaleAsync(id);
+            try
+            {
+                return await _saleRepository.DeleteSaleAsync(id);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    547 => new InvalidOperationException("Cannot delete sale. This sale has associated sale details. Please delete related sale details first."),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<IEnumerable<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate)
