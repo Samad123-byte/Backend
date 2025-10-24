@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Backend.Models;
 using Backend.IServices;
 
@@ -15,142 +15,173 @@ namespace Backend.Controllers
             _saleDetailService = saleDetailService;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<SaleDetail>>> GetSaleDetails()
+        // ✅ GET: api/SaleDetails/getall
+        [HttpGet("getall")]
+        public async Task<IActionResult> GetAll()
         {
             var saleDetails = await _saleDetailService.GetAllSaleDetailsAsync();
-            return Ok(saleDetails);
+            return Ok(new
+            {
+                success = true,
+                message = "Fetched all sale details successfully.",
+                data = saleDetails
+            });
         }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<SaleDetail>> GetSaleDetail(int id)
+        // ✅ GET: api/SaleDetails/getbyid/{id}
+        [HttpGet("getbyid/{id}")]
+        public async Task<IActionResult> GetById(int id)
         {
             var saleDetail = await _saleDetailService.GetSaleDetailByIdAsync(id);
-
             if (saleDetail == null)
-            {
-                return NotFound();
-            }
+                return NotFound(new
+                {
+                    success = false,
+                    message = $"Sale detail with ID {id} not found."
+                });
 
-            return Ok(saleDetail);
+            return Ok(new
+            {
+                success = true,
+                message = "Fetched sale detail successfully.",
+                data = saleDetail
+            });
         }
 
-        [HttpGet("BySale/{saleId}")]
-        public async Task<ActionResult<IEnumerable<SaleDetail>>> GetSaleDetailsBySaleId(int saleId)
+        // ✅ GET: api/SaleDetails/bysale/{saleId}
+        [HttpGet("bysale/{saleId}")]
+        public async Task<IActionResult> GetBySaleId(int saleId)
         {
             var saleDetails = await _saleDetailService.GetSaleDetailsBySaleIdAsync(saleId);
+
+            // ✅ Always return plain array — avoids frontend map() error
+            if (saleDetails == null || !saleDetails.Any())
+                return Ok(new List<SaleDetail>()); // return empty array instead of null
+
             return Ok(saleDetails);
         }
 
-        [HttpGet("Total/{saleId}")]
-        public async Task<ActionResult<decimal>> GetSaleTotal(int saleId)
+        // ✅ GET: api/SaleDetails/total/{saleId}
+        [HttpGet("total/{saleId}")]
+        public async Task<IActionResult> GetTotal(int saleId)
         {
             var total = await _saleDetailService.GetSaleTotalAsync(saleId);
-            return Ok(total);
+            return Ok(new
+            {
+                success = true,
+                message = $"Fetched total for Sale ID {saleId}.",
+                total = total
+            });
         }
 
-        [HttpPost]
-        public async Task<ActionResult<SaleDetail>> CreateSaleDetail(SaleDetail saleDetail)
+        // ✅ POST: api/SaleDetails/add
+        [HttpPost("add")]
+        public async Task<IActionResult> Add([FromBody] SaleDetail saleDetail)
         {
             if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                var createdSaleDetail = await _saleDetailService.CreateSaleDetailAsync(saleDetail);
-                return CreatedAtAction(nameof(GetSaleDetail), new { id = createdSaleDetail.SaleDetailId }, createdSaleDetail);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest($"Error creating sale detail: {ex.Message}");
-            }
-        }
-
-        [HttpPost("Batch")]
-        public async Task<ActionResult<IEnumerable<SaleDetail>>> CreateMultipleSaleDetails(IEnumerable<SaleDetail> saleDetails)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var createdSaleDetails = new List<SaleDetail>();
-
-            try
-            {
-                foreach (var saleDetail in saleDetails)
+                return BadRequest(new
                 {
-                    var createdSaleDetail = await _saleDetailService.CreateSaleDetailAsync(saleDetail);
-                    createdSaleDetails.Add(createdSaleDetail);
-                }
+                    success = false,
+                    message = "Invalid data submitted.",
+                    errors = ModelState
+                });
 
-                return Ok(createdSaleDetails);
-            }
-            catch (Exception ex)
+            var created = await _saleDetailService.CreateSaleDetailAsync(saleDetail);
+            return Ok(new
             {
-                return BadRequest($"Error creating sale details: {ex.Message}");
-            }
+                success = true,
+                message = "Sale detail added successfully.",
+                data = created
+            });
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSaleDetail(int id, SaleDetail saleDetail)
+        // ✅ POST: api/SaleDetails/update
+        [HttpPost("update")]
+        public async Task<IActionResult> Update([FromBody] SaleDetail saleDetail)
         {
-            if (id != saleDetail.SaleDetailId)
-            {
-                return BadRequest("Sale Detail ID mismatch");
-            }
-
             if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Invalid data submitted.",
+                    errors = ModelState
+                });
 
-            if (!await _saleDetailService.SaleDetailExistsAsync(id))
-            {
-                return NotFound();
-            }
+            var exists = await _saleDetailService.SaleDetailExistsAsync(saleDetail.SaleDetailId);
+            if (!exists)
+                return NotFound(new
+                {
+                    success = false,
+                    message = $"Sale detail with ID {saleDetail.SaleDetailId} not found."
+                });
 
             var success = await _saleDetailService.UpdateSaleDetailAsync(saleDetail);
-
-            if (!success)
-            {
-                return BadRequest("Failed to update sale detail.");
-            }
-
-            return NoContent();
+            return success
+                ? Ok(new { success = true, message = "Sale detail updated successfully." })
+                : BadRequest(new { success = false, message = "Failed to update sale detail." });
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteSaleDetail(int id)
+        // ✅ DELETE: api/SaleDetails/delete/{id}
+        [HttpDelete("delete/{id}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            if (!await _saleDetailService.SaleDetailExistsAsync(id))
-            {
-                return NotFound();
-            }
+            var exists = await _saleDetailService.SaleDetailExistsAsync(id);
+            if (!exists)
+                return NotFound(new
+                {
+                    success = false,
+                    message = $"Sale detail with ID {id} not found."
+                });
 
             var success = await _saleDetailService.DeleteSaleDetailAsync(id);
-
-            if (!success)
-            {
-                return BadRequest("Cannot delete sale detail.");
-            }
-
-            return NoContent();
+            return success
+                ? Ok(new { success = true, message = "Sale detail deleted successfully." })
+                : BadRequest(new { success = false, message = "Failed to delete sale detail." });
         }
 
-        [HttpDelete("BySale/{saleId}")]
-        public async Task<IActionResult> DeleteSaleDetailsBySaleId(int saleId)
+        // ✅ DELETE: api/SaleDetails/deleteBySale/{saleId}
+        [HttpDelete("deleteBySale/{saleId}")]
+        public async Task<IActionResult> DeleteBySale(int saleId)
         {
             var success = await _saleDetailService.DeleteSaleDetailsBySaleIdAsync(saleId);
+            return success
+                ? Ok(new { success = true, message = "Sale details deleted successfully." })
+                : BadRequest(new { success = false, message = "Failed to delete sale details." });
+        }
 
-            if (!success)
+        // ✅ POST: api/SaleDetails/batch
+        [HttpPost("batch")]
+        public async Task<IActionResult> AddBatch([FromBody] IEnumerable<SaleDetail> saleDetails)
+        {
+            if (saleDetails == null || !saleDetails.Any())
+                return BadRequest(new { success = false, message = "No sale details provided." });
+
+            try
             {
-                return BadRequest("Cannot delete sale details.");
-            }
+                var createdSaleDetails = new List<SaleDetail>();
 
-            return NoContent();
+                foreach (var saleDetail in saleDetails)
+                {
+                    var created = await _saleDetailService.CreateSaleDetailAsync(saleDetail);
+                    createdSaleDetails.Add(created);
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Batch sale details created successfully.",
+                    data = createdSaleDetails
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = $"Error creating sale details: {ex.Message}"
+                });
+            }
         }
     }
 }
+
