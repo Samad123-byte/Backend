@@ -74,14 +74,26 @@ namespace Backend.Controllers
         [HttpPost("delete")]
         public async Task<IActionResult> DeleteProduct([FromBody] int id)
         {
-            if (!await _productService.ProductExistsAsync(id))
-                return NotFound();
+            try
+            {
+                if (!await _productService.ProductExistsAsync(id))
+                    return NotFound(new { success = false, message = "Product not found." });
 
-            var success = await _productService.DeleteProductAsync(id);
-            if (!success)
-                return BadRequest("Cannot delete product. It may be referenced elsewhere.");
+                var success = await _productService.DeleteProductAsync(id);
 
-            return Ok("Product deleted successfully.");
+                if (!success)
+                    return BadRequest(new { success = false, message = "Failed to delete product." });
+
+                return Ok(new { success = true, message = "Product deleted successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+            }
         }
     }
 }
