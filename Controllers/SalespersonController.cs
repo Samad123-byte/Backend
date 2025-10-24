@@ -55,16 +55,32 @@ namespace Backend.Controllers
         }
 
         // ✅ POST: api/Salesperson/delete
+        
         [HttpPost("delete")]
         public async Task<IActionResult> Delete([FromBody] dynamic body)
         {
-            int id = (int)body.id;
+            try
+            {
+                int id = (int)body.id;
 
-            var exists = await _salespersonService.SalespersonExistsAsync(id);
-            if (!exists) return NotFound();
+                var exists = await _salespersonService.SalespersonExistsAsync(id);
+                if (!exists) return NotFound(new { success = false, message = "Salesperson not found." });
 
-            var success = await _salespersonService.DeleteSalespersonAsync(id);
-            return success ? Ok("Salesperson deleted successfully.") : BadRequest("Failed to delete salesperson.");
+                var success = await _salespersonService.DeleteSalespersonAsync(id);
+
+                if (!success)
+                    return BadRequest(new { success = false, message = "Failed to delete salesperson." });
+
+                return Ok(new { success = true, message = "Salesperson deleted successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+            }
         }
     }
 }
