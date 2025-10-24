@@ -1,6 +1,7 @@
-﻿using Backend.IRepository;
+using Backend.IRepository;
 using Backend.IServices;
 using Backend.Models;
+using Microsoft.Data.SqlClient;
 
 namespace Backend.Service
 {
@@ -35,23 +36,57 @@ namespace Backend.Service
 
         public async Task<Salesperson> CreateSalespersonAsync(Salesperson salesperson)
         {
-            return await _salespersonRepository.CreateSalespersonAsync(salesperson);
+            try
+            {
+                return await _salespersonRepository.CreateSalespersonAsync(salesperson);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    2627 => new InvalidOperationException("A salesperson with this code already exists"),
+                    2601 => new InvalidOperationException("Duplicate salesperson code"),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> UpdateSalespersonAsync(Salesperson salesperson)
         {
-            return await _salespersonRepository.UpdateSalespersonAsync(salesperson);
+            try
+            {
+                return await _salespersonRepository.UpdateSalespersonAsync(salesperson);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    2627 => new InvalidOperationException("A salesperson with this code already exists"),
+                    2601 => new InvalidOperationException("Duplicate salesperson code"),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> DeleteSalespersonAsync(int id)
         {
-            return await _salespersonRepository.DeleteSalespersonAsync(id);
+            try
+            {
+                return await _salespersonRepository.DeleteSalespersonAsync(id);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    547 => new InvalidOperationException("Cannot delete salesperson. This salesperson has associated sales records in the database. Please reassign or delete the sales first before removing this salesperson."),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> SalespersonExistsAsync(int id)
         {
             return await _salespersonRepository.SalespersonExistsAsync(id);
         }
-
     }
 }
