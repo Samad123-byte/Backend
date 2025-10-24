@@ -131,20 +131,31 @@ namespace Backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSale(int id)
         {
-            var existingSale = await _saleService.GetSaleByIdAsync(id);
-            if (existingSale == null)
+            try
             {
-                return NotFound();
+                var existingSale = await _saleService.GetSaleByIdAsync(id);
+                if (existingSale == null)
+                {
+                    return NotFound(new { success = false, message = "Sale not found." });
+                }
+
+                var success = await _saleService.DeleteSaleAsync(id);
+
+                if (!success)
+                {
+                    return BadRequest(new { success = false, message = "Failed to delete sale." });
+                }
+
+                return NoContent();
             }
-
-            var success = await _saleService.DeleteSaleAsync(id);
-
-            if (!success)
+            catch (InvalidOperationException ex)
             {
-                return BadRequest("Cannot delete sale. This sale has associated sale details or is referenced by other records in the database. Please delete related sale details first.");
+                return BadRequest(new { success = false, message = ex.Message });
             }
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+            }
         }
     }
 }
