@@ -1,6 +1,7 @@
-﻿using Backend.IRepository;
+using Backend.IRepository;
 using Backend.IServices;
 using Backend.Models;
+using Microsoft.Data.SqlClient;
 
 namespace Backend.Service
 {
@@ -25,23 +26,57 @@ namespace Backend.Service
 
         public async Task<Product> CreateProductAsync(Product product)
         {
-            return await _productRepository.CreateProductAsync(product);
+            try
+            {
+                return await _productRepository.CreateProductAsync(product);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    2627 => new InvalidOperationException("A product with this code already exists"),
+                    2601 => new InvalidOperationException("Duplicate product code"),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> UpdateProductAsync(Product product)
         {
-            return await _productRepository.UpdateProductAsync(product);
+            try
+            {
+                return await _productRepository.UpdateProductAsync(product);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    2627 => new InvalidOperationException("A product with this code already exists"),
+                    2601 => new InvalidOperationException("Duplicate product code"),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> DeleteProductAsync(int id)
         {
-            return await _productRepository.DeleteProductAsync(id);
+            try
+            {
+                return await _productRepository.DeleteProductAsync(id);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    547 => new InvalidOperationException("Cannot delete product. This product is referenced in existing sale details. Please remove it from all sales before deleting the product."),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> ProductExistsAsync(int id)
         {
             return await _productRepository.ProductExistsAsync(id);
         }
-
     }
 }
