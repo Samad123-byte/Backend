@@ -1,12 +1,12 @@
-﻿using Backend.IRepository;
+using Backend.IRepository;
 using Backend.IServices;
 using Backend.Models;
+using Microsoft.Data.SqlClient;
 
 namespace Backend.Service
 {
     public class SaleDetailService : ISaleDetailService
     {
-
         private readonly ISaleDetailRepository _saleDetailRepository;
 
         public SaleDetailService(ISaleDetailRepository saleDetailRepository)
@@ -31,22 +31,66 @@ namespace Backend.Service
 
         public async Task<SaleDetail> CreateSaleDetailAsync(SaleDetail saleDetail)
         {
-            return await _saleDetailRepository.CreateSaleDetailAsync(saleDetail);
+            try
+            {
+                return await _saleDetailRepository.CreateSaleDetailAsync(saleDetail);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    547 => new InvalidOperationException("Cannot create sale detail. The referenced sale or product does not exist."),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> UpdateSaleDetailAsync(SaleDetail saleDetail)
         {
-            return await _saleDetailRepository.UpdateSaleDetailAsync(saleDetail);
+            try
+            {
+                return await _saleDetailRepository.UpdateSaleDetailAsync(saleDetail);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    547 => new InvalidOperationException("Cannot update sale detail. The referenced sale or product does not exist."),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> DeleteSaleDetailAsync(int id)
         {
-            return await _saleDetailRepository.DeleteSaleDetailAsync(id);
+            try
+            {
+                return await _saleDetailRepository.DeleteSaleDetailAsync(id);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    547 => new InvalidOperationException("Cannot delete sale detail. This record is referenced by other records in the database."),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<bool> DeleteSaleDetailsBySaleIdAsync(int saleId)
         {
-            return await _saleDetailRepository.DeleteSaleDetailsBySaleIdAsync(saleId);
+            try
+            {
+                return await _saleDetailRepository.DeleteSaleDetailsBySaleIdAsync(saleId);
+            }
+            catch (SqlException ex)
+            {
+                throw ex.Number switch
+                {
+                    547 => new InvalidOperationException("Cannot delete sale details. These records are referenced by other records in the database."),
+                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                };
+            }
         }
 
         public async Task<decimal> GetSaleTotalAsync(int saleId)
@@ -54,8 +98,7 @@ namespace Backend.Service
             return await _saleDetailRepository.GetSaleTotalAsync(saleId);
         }
 
-
-        public async Task<bool> SaleDetailExistsAsync(int id) 
+        public async Task<bool> SaleDetailExistsAsync(int id)
         {
             return await _saleDetailRepository.SaleDetailExistsAsync(id);
         }
