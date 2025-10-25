@@ -16,10 +16,13 @@ namespace Backend.Controllers
         }
 
         // ✅ GET: api/Salesperson/getall
+        // ✅ GET: api/Salesperson/getall
         [HttpGet("getall")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var salespersons = await _salespersonService.GetAllSalespersonsAsync();
+            var salespersons = await _salespersonService.GetAllSalespersonsAsync(pageNumber, pageSize);
             return Ok(salespersons);
         }
 
