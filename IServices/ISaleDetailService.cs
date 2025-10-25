@@ -1,10 +1,10 @@
-﻿using Backend.Models;
+using Backend.Models;
 
 namespace Backend.IServices
 {
     public interface ISaleDetailService
     {
-        Task<IEnumerable<SaleDetail>> GetAllSaleDetailsAsync();
+        Task<PaginatedResponse<SaleDetail>> GetAllSaleDetailsAsync(int pageNumber = 1, int pageSize = 10); // ✅ Changed
         Task<SaleDetail?> GetSaleDetailByIdAsync(int id);
         Task<IEnumerable<SaleDetail>> GetSaleDetailsBySaleIdAsync(int saleId);
         Task<SaleDetail> CreateSaleDetailAsync(SaleDetail saleDetail);
@@ -13,6 +13,5 @@ namespace Backend.IServices
         Task<bool> DeleteSaleDetailsBySaleIdAsync(int saleId);
         Task<decimal> GetSaleTotalAsync(int saleId);
         Task<bool> SaleDetailExistsAsync(int id);
-
     }
 }
