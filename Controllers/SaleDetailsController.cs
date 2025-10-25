@@ -16,15 +16,22 @@ namespace Backend.Controllers
         }
 
         // ✅ GET: api/SaleDetails/getall
+        // ✅ GET: api/SaleDetails/getall
         [HttpGet("getall")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var saleDetails = await _saleDetailService.GetAllSaleDetailsAsync();
+            var saleDetails = await _saleDetailService.GetAllSaleDetailsAsync(pageNumber, pageSize);
             return Ok(new
             {
                 success = true,
-                message = "Fetched all sale details successfully.",
-                data = saleDetails
+                message = "Fetched sale details successfully.",
+                data = saleDetails.Data,
+                currentPage = saleDetails.CurrentPage,
+                pageSize = saleDetails.PageSize,
+                totalRecords = saleDetails.TotalRecords,
+                totalPages = saleDetails.TotalPages
             });
         }
 
