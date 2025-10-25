@@ -14,9 +14,9 @@ namespace Backend.Service
             _productRepository = productRepository;
         }
 
-        public async Task<IEnumerable<Product>> GetAllProductsAsync()
+        public async Task<PaginatedResponse<Product>> GetAllProductsAsync(int pageNumber = 1, int pageSize = 10)
         {
-            return await _productRepository.GetAllProductsAsync();
+            return await _productRepository.GetAllProductsAsync(pageNumber, pageSize);
         }
 
         public async Task<Product?> GetProductByIdAsync(int id)
