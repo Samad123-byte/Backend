@@ -17,9 +17,11 @@ namespace Backend.Controllers
 
         // ✅ GET: api/Products/getAll
         [HttpGet("getAll")]
-        public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+        public async Task<ActionResult<PaginatedResponse<Product>>> GetProducts(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var products = await _productService.GetAllProductsAsync();
+            var products = await _productService.GetAllProductsAsync(pageNumber, pageSize);
             return Ok(products);
         }
 
