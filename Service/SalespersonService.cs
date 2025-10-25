@@ -14,9 +14,9 @@ namespace Backend.Service
             _salespersonRepository = salespersonRepository;
         }
 
-        public async Task<IEnumerable<Salesperson>> GetAllSalespersonsAsync()
+        public async Task<PaginatedResponse<Salesperson>> GetAllSalespersonsAsync(int pageNumber = 1, int pageSize = 10)
         {
-            return await _salespersonRepository.GetAllSalespersonsAsync();
+            return await _salespersonRepository.GetAllSalespersonsAsync(pageNumber, pageSize);
         }
 
         public async Task<Salesperson?> GetSalespersonByIdAsync(int id)
