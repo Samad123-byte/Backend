@@ -20,6 +20,7 @@ namespace Backend.Models
 
         [StringLength(500)] // Updated to match stored procedure parameter length
         public string? Comments { get; set; }
+           public DateTime CreatedDate { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
