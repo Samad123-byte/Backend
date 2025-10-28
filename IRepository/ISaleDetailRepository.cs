@@ -9,7 +9,8 @@ namespace Backend.IRepository
         Task<IEnumerable<SaleDetail>> GetSaleDetailsBySaleIdAsync(int saleId);
         Task<SaleDetail> CreateSaleDetailAsync(SaleDetail saleDetail);
         Task<bool> UpdateSaleDetailAsync(SaleDetail saleDetail);
-        Task<bool> DeleteSaleDetailAsync(int id);
+        Task<(bool success, string message)> DeleteSaleDetailAsync(int id);
+
         Task<bool> DeleteSaleDetailsBySaleIdAsync(int saleId);
         Task<bool> SaleDetailExistsAsync(int id);
         Task<decimal> GetSaleTotalAsync(int saleId);
