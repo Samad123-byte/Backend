@@ -36,8 +36,10 @@ namespace Backend.Repositories
                                 SaleId = reader.GetInt32("SaleId"),
                                 Total = reader.GetDecimal("Total"),
                                 SaleDate = reader.GetDateTime("SaleDate"),
+
                                 SalespersonId = reader.IsDBNull("SalespersonId") ? null : reader.GetInt32("SalespersonId"),
                                 Comments = reader.IsDBNull("Comments") ? null : reader.GetString("Comments"),
+                                CreatedDate = reader.GetDateTime("CreatedDate"),
                                 UpdatedDate = reader.IsDBNull("UpdatedDate") ? null : reader.GetDateTime("UpdatedDate")
                             });
                         }
@@ -82,6 +84,7 @@ namespace Backend.Repositories
                                 SaleDate = reader.GetDateTime("SaleDate"),
                                 SalespersonId = reader.IsDBNull("SalespersonId") ? null : reader.GetInt32("SalespersonId"),
                                 Comments = reader.IsDBNull("Comments") ? null : reader.GetString("Comments"),
+                                CreatedDate = reader.GetDateTime("CreatedDate"),
                                 UpdatedDate = reader.IsDBNull("UpdatedDate") ? null : reader.GetDateTime("UpdatedDate")
                             };
                         }
@@ -116,6 +119,7 @@ namespace Backend.Repositories
                                 SaleDate = reader.GetDateTime("SaleDate"),
                                 SalespersonId = reader.IsDBNull("SalespersonId") ? null : reader.GetInt32("SalespersonId"),
                                 Comments = reader.IsDBNull("Comments") ? null : reader.GetString("Comments"),
+                                CreatedDate = reader.GetDateTime("CreatedDate"),
                                 UpdatedDate = reader.IsDBNull("UpdatedDate") ? null : reader.GetDateTime("UpdatedDate")
                             };
                         }
@@ -226,6 +230,7 @@ namespace Backend.Repositories
                                 SaleDate = reader.GetDateTime("SaleDate"),
                                 SalespersonId = reader.IsDBNull("SalespersonId") ? null : reader.GetInt32("SalespersonId"),
                                 Comments = reader.IsDBNull("Comments") ? null : reader.GetString("Comments"),
+                                CreatedDate = reader.GetDateTime("CreatedDate"),
                                 UpdatedDate = reader.IsDBNull("UpdatedDate") ? null : reader.GetDateTime("UpdatedDate")
                             });
                         }
@@ -259,6 +264,7 @@ namespace Backend.Repositories
                                 SaleDate = reader.GetDateTime("SaleDate"),
                                 SalespersonId = reader.IsDBNull("SalespersonId") ? null : reader.GetInt32("SalespersonId"),
                                 Comments = reader.IsDBNull("Comments") ? null : reader.GetString("Comments"),
+                                CreatedDate = reader.GetDateTime("CreatedDate"),
                                 UpdatedDate = reader.IsDBNull("UpdatedDate") ? null : reader.GetDateTime("UpdatedDate")
                             });
                         }
