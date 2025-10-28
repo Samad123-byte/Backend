@@ -68,6 +68,7 @@ namespace Backend.Service
             }
         }
 
+
         public async Task<bool> DeleteSalespersonAsync(int id)
         {
             try
@@ -76,14 +77,24 @@ namespace Backend.Service
             }
             catch (SqlException ex)
             {
-                throw ex.Number switch
+                // Error 547 is foreign key constraint violation
+                if (ex.Number == 547)
                 {
-                    547 => new InvalidOperationException("Cannot delete salesperson. This salesperson has associated sales records in the database. Please reassign or delete the sales first before removing this salesperson."),
-                    _ => new InvalidOperationException($"Database error: {ex.Message}")
-                };
+                    throw new InvalidOperationException(
+                        "Cannot delete salesperson. This salesperson has associated sales records in the database. " +
+                        "Please reassign or delete the sales first before removing this salesperson."
+                    );
+                }
+
+                // For other SQL errors, wrap them
+                throw new InvalidOperationException($"Database error: {ex.Message}", ex);
+            }
+            catch (Exception ex)
+            {
+                // Don't swallow other exceptions
+                throw new InvalidOperationException($"Error deleting salesperson: {ex.Message}", ex);
             }
         }
-
         public async Task<bool> SalespersonExistsAsync(int id)
         {
             return await _salespersonRepository.SalespersonExistsAsync(id);
