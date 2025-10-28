@@ -188,7 +188,7 @@ namespace Backend.Repositories
             return false;
         }
 
-        public async Task<bool> DeleteSaleDetailAsync(int id)
+        public async Task<(bool success, string message)> DeleteSaleDetailAsync(int id)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
@@ -202,13 +202,15 @@ namespace Backend.Repositories
                     {
                         if (await reader.ReadAsync())
                         {
-                            return reader.GetInt32("Success") == 1;
+                            bool success = reader.GetInt32(reader.GetOrdinal("Success")) == 1;
+                            string message = reader.GetString(reader.GetOrdinal("Message"));
+                            return (success, message);
                         }
                     }
                 }
             }
 
-            return false;
+            return (false, "No response from database.");
         }
 
         public async Task<bool> DeleteSaleDetailsBySaleIdAsync(int saleId)
