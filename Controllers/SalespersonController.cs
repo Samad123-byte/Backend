@@ -16,7 +16,6 @@ namespace Backend.Controllers
         }
 
         // ✅ GET: api/Salesperson/getall
-        // ✅ GET: api/Salesperson/getall
         [HttpGet("getall")]
         public async Task<IActionResult> GetAll(
             [FromQuery] int pageNumber = 1,
@@ -58,18 +57,15 @@ namespace Backend.Controllers
         }
 
         // ✅ POST: api/Salesperson/delete
-        
         [HttpPost("delete")]
-        public async Task<IActionResult> Delete([FromBody] dynamic body)
+        public async Task<IActionResult> Delete([FromBody] DeleteRequest request)
         {
             try
             {
-                int id = (int)body.id;
-
-                var exists = await _salespersonService.SalespersonExistsAsync(id);
+                var exists = await _salespersonService.SalespersonExistsAsync(request.Id);
                 if (!exists) return NotFound(new { success = false, message = "Salesperson not found." });
 
-                var success = await _salespersonService.DeleteSalespersonAsync(id);
+                var success = await _salespersonService.DeleteSalespersonAsync(request.Id);
 
                 if (!success)
                     return BadRequest(new { success = false, message = "Failed to delete salesperson." });
@@ -85,5 +81,11 @@ namespace Backend.Controllers
                 return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
             }
         }
+    }
+
+    // Request model for delete endpoint
+    public class DeleteRequest
+    {
+        public int Id { get; set; }
     }
 }
