@@ -1,8 +1,6 @@
-﻿
-// ProductsController.cs
-using Microsoft.AspNetCore.Mvc;
-using Backend.Data.Repositories;
+﻿using Microsoft.AspNetCore.Mvc;
 using Backend.Models;
+using Backend.IServices;
 
 namespace Backend.Controllers
 {
@@ -10,49 +8,45 @@ namespace Backend.Controllers
     [Route("api/[controller]")]
     public class ProductsController : ControllerBase
     {
-        private readonly IProductRepository _productRepository;
+        private readonly IProductService _productService;
 
-        public ProductsController(IProductRepository productRepository)
+        public ProductsController(IProductService productService)
         {
-            _productRepository = productRepository;
+            _productService = productService;
         }
 
-        // GET: api/Products
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+        // ✅ GET: api/Products/getAll
+        [HttpGet("getAll")]
+        public async Task<ActionResult<PaginatedResponse<Product>>> GetProducts(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var products = await _productRepository.GetAllProductsAsync();
+            var products = await _productService.GetAllProductsAsync(pageNumber, pageSize);
             return Ok(products);
         }
 
-        // GET: api/Products/5
-        [HttpGet("{id}")]
+        // ✅ GET: api/Products/getById/{id}
+        [HttpGet("getById/{id}")]
         public async Task<ActionResult<Product>> GetProduct(int id)
         {
-            var product = await _productRepository.GetProductByIdAsync(id);
-
+            var product = await _productService.GetProductByIdAsync(id);
             if (product == null)
-            {
                 return NotFound();
-            }
 
             return Ok(product);
         }
 
-        // POST: api/Products
-        [HttpPost]
-        public async Task<ActionResult<Product>> CreateProduct(Product product)
+        // ✅ POST: api/Products/create
+        [HttpPost("create")]
+        public async Task<ActionResult<Product>> CreateProduct([FromBody] Product product)
         {
-            // Validate model state
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             try
             {
-                var createdProduct = await _productRepository.CreateProductAsync(product);
-                return CreatedAtAction(nameof(GetProduct), new { id = createdProduct.ProductId }, createdProduct);
+                var createdProduct = await _productService.CreateProductAsync(product);
+                return Ok(createdProduct);
             }
             catch (Exception ex)
             {
@@ -60,54 +54,48 @@ namespace Backend.Controllers
             }
         }
 
-        // PUT: api/Products/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProduct(int id, Product product)
+        // ✅ POST: api/Products/update
+        [HttpPost("update")]
+        public async Task<IActionResult> UpdateProduct([FromBody] Product product)
         {
-            if (id != product.ProductId)
-            {
-                return BadRequest("Product ID mismatch");
-            }
-
-            // Validate model state
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            // Check if product exists
-            if (!await _productRepository.ProductExistsAsync(id))
-            {
+            if (!await _productService.ProductExistsAsync(product.ProductId))
                 return NotFound();
-            }
 
-            var success = await _productRepository.UpdateProductAsync(product);
+            var success = await _productService.UpdateProductAsync(product);
 
             if (!success)
-            {
-                return BadRequest("Failed to update product. The product may be referenced in existing sales or other dependencies that prevent modification.");
-            }
+                return BadRequest("Failed to update product.");
 
-            return NoContent();
+            return Ok("Product updated successfully.");
         }
 
-        // DELETE: api/Products/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteProduct(int id)
+        // ✅ POST: api/Products/delete
+        [HttpPost("delete")]
+        public async Task<IActionResult> DeleteProduct([FromBody] int id)
         {
-            if (!await _productRepository.ProductExistsAsync(id))
+            try
             {
-                return NotFound();
+                if (!await _productService.ProductExistsAsync(id))
+                    return NotFound(new { success = false, message = "Product not found." });
+
+                var success = await _productService.DeleteProductAsync(id);
+
+                if (!success)
+                    return BadRequest(new { success = false, message = "Failed to delete product." });
+
+                return Ok(new { success = true, message = "Product deleted successfully." });
             }
-
-            var success = await _productRepository.DeleteProductAsync(id);
-
-            if (!success)
+            catch (InvalidOperationException ex)
             {
-                return BadRequest("Cannot delete product. This product is referenced in existing sale details. Please remove it from all sales before deleting the product.");
+                return BadRequest(new { success = false, message = ex.Message });
             }
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+            }
         }
     }
 }

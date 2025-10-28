@@ -1,9 +1,11 @@
-﻿using Backend.Models;
+﻿using Backend.Data;
+using Backend.IRepository;
+using Backend.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 
-namespace Backend.Data.Repositories
+namespace Backend.Repositories
 {
     public class SalespersonRepository : ISalespersonRepository
     {
@@ -15,23 +17,28 @@ namespace Backend.Data.Repositories
             _context = context;
             _connectionString = configuration.GetConnectionString("DefaultConnection")!;
         }
-
-        public async Task<IEnumerable<Salesperson>> GetAllSalespersonsAsync()
+        public async Task<PaginatedResponse<Salesperson>> GetAllSalespersonsAsync(int pageNumber = 1, int pageSize = 10)
         {
-            var salespersons = new List<Salesperson>();
+            var response = new PaginatedResponse<Salesperson>();
+            int totalRecords = 0;
 
             using (var connection = new SqlConnection(_connectionString))
             {
                 using (var command = new SqlCommand("sp_GetAllSalespersons", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("@PageNumber", pageNumber);
+                    command.Parameters.AddWithValue("@PageSize", pageSize);
 
                     await connection.OpenAsync();
                     using (var reader = await command.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            salespersons.Add(new Salesperson
+                            if (totalRecords == 0)
+                                totalRecords = reader.GetInt32("TotalRecords");
+
+                            response.Data.Add(new Salesperson
                             {
                                 SalespersonId = reader.GetInt32("SalespersonId"),
                                 Name = reader.GetString("Name"),
@@ -44,7 +51,12 @@ namespace Backend.Data.Repositories
                 }
             }
 
-            return salespersons;
+            response.CurrentPage = pageNumber;
+            response.PageSize = pageSize;
+            response.TotalRecords = totalRecords;
+            response.TotalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+
+            return response;
         }
 
         public async Task<Salesperson?> GetSalespersonByIdAsync(int id)

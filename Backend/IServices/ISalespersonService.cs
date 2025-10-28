@@ -1,10 +1,10 @@
 ﻿using Backend.Models;
 
-namespace Backend.Data.Repositories
+namespace Backend.IServices
 {
-    public interface ISalespersonRepository
+    public interface ISalespersonService
     {
-        Task<IEnumerable<Salesperson>> GetAllSalespersonsAsync();
+        Task<PaginatedResponse<Salesperson>> GetAllSalespersonsAsync(int pageNumber = 1, int pageSize = 10); // ✅ Changed
         Task<Salesperson?> GetSalespersonByIdAsync(int id);
         Task<Salesperson?> GetSalespersonByCodeAsync(string code);
         Task<IEnumerable<Salesperson>> GetActiveSalespersonsAsync();

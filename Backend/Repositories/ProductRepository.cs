@@ -1,9 +1,11 @@
-﻿using Backend.Models;
+﻿using Backend.Data;
+using Backend.IRepository;
+using Backend.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 
-namespace Backend.Data.Repositories
+namespace Backend.Repositories
 {
     public class ProductRepository : IProductRepository
     {
@@ -16,22 +18,28 @@ namespace Backend.Data.Repositories
             _connectionString = configuration.GetConnectionString("DefaultConnection")!;
         }
 
-        public async Task<IEnumerable<Product>> GetAllProductsAsync()
+        public async Task<PaginatedResponse<Product>> GetAllProductsAsync(int pageNumber = 1, int pageSize = 10)
         {
-            var products = new List<Product>();
+            var response = new PaginatedResponse<Product>();
+            int totalRecords = 0;
 
             using (var connection = new SqlConnection(_connectionString))
             {
                 using (var command = new SqlCommand("sp_GetAllProducts", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("@PageNumber", pageNumber);
+                    command.Parameters.AddWithValue("@PageSize", pageSize);
 
                     await connection.OpenAsync();
                     using (var reader = await command.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            products.Add(new Product
+                            if (totalRecords == 0)
+                                totalRecords = reader.GetInt32("TotalRecords");
+
+                            response.Data.Add(new Product
                             {
                                 ProductId = reader.GetInt32("ProductId"),
                                 Name = reader.GetString("Name"),
@@ -47,7 +55,12 @@ namespace Backend.Data.Repositories
                 }
             }
 
-            return products;
+            response.CurrentPage = pageNumber;
+            response.PageSize = pageSize;
+            response.TotalRecords = totalRecords;
+            response.TotalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+
+            return response;
         }
 
         public async Task<Product?> GetProductByIdAsync(int id)

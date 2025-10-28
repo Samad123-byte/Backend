@@ -1,7 +1,6 @@
-﻿// SalesController.cs
-using Microsoft.AspNetCore.Mvc;
-using Backend.Data.Repositories;
+﻿using Microsoft.AspNetCore.Mvc;
 using Backend.Models;
+using Backend.IServices;
 
 namespace Backend.Controllers
 {
@@ -9,18 +8,21 @@ namespace Backend.Controllers
     [Route("api/[controller]")]
     public class SalesController : ControllerBase
     {
-        private readonly ISaleRepository _saleRepository;
+        private readonly ISaleService _saleService;
 
-        public SalesController(ISaleRepository saleRepository)
+        public SalesController(ISaleService saleService)
         {
-            _saleRepository = saleRepository;
+            _saleService = saleService;
         }
 
         // GET: api/Sales
+        
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Sale>>> GetSales()
+        public async Task<ActionResult<PaginatedResponse<Sale>>> GetSales(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var sales = await _saleRepository.GetAllSalesAsync();
+            var sales = await _saleService.GetAllSalesAsync(pageNumber, pageSize);
             return Ok(sales);
         }
 
@@ -28,7 +30,7 @@ namespace Backend.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Sale>> GetSale(int id)
         {
-            var sale = await _saleRepository.GetSaleByIdAsync(id);
+            var sale = await _saleService.GetSaleByIdAsync(id);
 
             if (sale == null)
             {
@@ -42,7 +44,7 @@ namespace Backend.Controllers
         [HttpGet("{id}/WithDetails")]
         public async Task<ActionResult<Sale>> GetSaleWithDetails(int id)
         {
-            var sale = await _saleRepository.GetSaleWithDetailsAsync(id);
+            var sale = await _saleService.GetSaleWithDetailsAsync(id);
 
             if (sale == null)
             {
@@ -58,7 +60,7 @@ namespace Backend.Controllers
             [FromQuery] DateTime startDate,
             [FromQuery] DateTime endDate)
         {
-            var sales = await _saleRepository.GetSalesByDateRangeAsync(startDate, endDate);
+            var sales = await _saleService.GetSalesByDateRangeAsync(startDate, endDate);
             return Ok(sales);
         }
 
@@ -66,7 +68,7 @@ namespace Backend.Controllers
         [HttpGet("BySalesperson/{salespersonId}")]
         public async Task<ActionResult<IEnumerable<Sale>>> GetSalesBySalesperson(int salespersonId)
         {
-            var sales = await _saleRepository.GetSalesBySalespersonAsync(salespersonId);
+            var sales = await _saleService.GetSalesBySalespersonAsync(salespersonId);
             return Ok(sales);
         }
 
@@ -74,7 +76,6 @@ namespace Backend.Controllers
         [HttpPost]
         public async Task<ActionResult<Sale>> CreateSale(Sale sale)
         {
-            // Validate model state
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -82,16 +83,14 @@ namespace Backend.Controllers
 
             try
             {
-                // Set default values if not provided
                 if (sale.SaleDate == default(DateTime))
                 {
                     sale.SaleDate = DateTime.Now;
                 }
 
-                // DO NOT set UpdatedDate for new sales - let the stored procedure handle it
                 sale.UpdatedDate = null;
 
-                var createdSale = await _saleRepository.CreateSaleAsync(sale);
+                var createdSale = await _saleService.CreateSaleAsync(sale);
                 return CreatedAtAction(nameof(GetSale), new { id = createdSale.SaleId }, createdSale);
             }
             catch (Exception ex)
@@ -109,20 +108,18 @@ namespace Backend.Controllers
                 return BadRequest("Sale ID mismatch");
             }
 
-            // Validate model state
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            // Check if sale exists
-            if (!await _saleRepository.SaleExistsAsync(id))
+            var existingSale = await _saleService.GetSaleByIdAsync(id);
+            if (existingSale == null)
             {
                 return NotFound();
             }
 
-            // The stored procedure will handle setting UpdatedDate automatically
-            var success = await _saleRepository.UpdateSaleAsync(sale);
+            var success = await _saleService.UpdateSaleAsync(sale);
 
             if (!success)
             {
@@ -132,23 +129,35 @@ namespace Backend.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Sales/5
+        // ✅ FIXED: DELETE with proper error handling
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSale(int id)
         {
-            if (!await _saleRepository.SaleExistsAsync(id))
+            try
             {
-                return NotFound();
+                var existingSale = await _saleService.GetSaleByIdAsync(id);
+                if (existingSale == null)
+                {
+                    return NotFound(new { success = false, message = "Sale not found." });
+                }
+
+                var (success, message) = await _saleService.DeleteSaleAsync(id);
+
+                if (!success)
+                {
+                    return BadRequest(new { success = false, message });
+                }
+
+                return Ok(new { success = true, message });
             }
-
-            var success = await _saleRepository.DeleteSaleAsync(id);
-
-            if (!success)
+            catch (InvalidOperationException ex)
             {
-                return BadRequest("Cannot delete sale. This sale has associated sale details or is referenced by other records in the database. Please delete related sale details first.");
+                return BadRequest(new { success = false, message = ex.Message });
             }
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "An unexpected error occurred: " + ex.Message });
+            }
         }
     }
 }

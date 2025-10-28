@@ -16,6 +16,8 @@ namespace Backend.Models
         [Required]
         public DateTime SaleDate { get; set; }
 
+        public DateTime CreatedDate { get; set; }
+
         public int? SalespersonId { get; set; }
 
         [StringLength(500)] // Updated to match stored procedure parameter length

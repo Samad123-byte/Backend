@@ -1,8 +1,6 @@
-﻿
-// SalespersonController.cs
-using Microsoft.AspNetCore.Mvc;
-using Backend.Data.Repositories;
+﻿using Microsoft.AspNetCore.Mvc;
 using Backend.Models;
+using Backend.IServices;
 
 namespace Backend.Controllers
 {
@@ -10,132 +8,84 @@ namespace Backend.Controllers
     [Route("api/[controller]")]
     public class SalespersonController : ControllerBase
     {
-        private readonly ISalespersonRepository _salespersonRepository;
+        private readonly ISalespersonService _salespersonService;
 
-        public SalespersonController(ISalespersonRepository salespersonRepository)
+        public SalespersonController(ISalespersonService salespersonService)
         {
-            _salespersonRepository = salespersonRepository;
+            _salespersonService = salespersonService;
         }
 
-        // GET: api/Salesperson
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Salesperson>>> GetSalespersons()
+        // ✅ GET: api/Salesperson/getall
+        [HttpGet("getall")]
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var salespersons = await _salespersonRepository.GetAllSalespersonsAsync();
+            var salespersons = await _salespersonService.GetAllSalespersonsAsync(pageNumber, pageSize);
             return Ok(salespersons);
         }
 
-        // GET: api/Salesperson/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Salesperson>> GetSalesperson(int id)
+        // ✅ GET: api/Salesperson/getbyid/{id}
+        [HttpGet("getbyid/{id}")]
+        public async Task<IActionResult> GetById(int id)
         {
-            var salesperson = await _salespersonRepository.GetSalespersonByIdAsync(id);
-
-            if (salesperson == null)
-            {
-                return NotFound();
-            }
-
+            var salesperson = await _salespersonService.GetSalespersonByIdAsync(id);
+            if (salesperson == null) return NotFound();
             return Ok(salesperson);
         }
 
-        // GET: api/Salesperson/ByCode/SP001
-        [HttpGet("ByCode/{code}")]
-        public async Task<ActionResult<Salesperson>> GetSalespersonByCode(string code)
+        // ✅ POST: api/Salesperson/add
+        [HttpPost("add")]
+        public async Task<IActionResult> Add([FromBody] Salesperson salesperson)
         {
-            var salesperson = await _salespersonRepository.GetSalespersonByCodeAsync(code);
-
-            if (salesperson == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(salesperson);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var created = await _salespersonService.CreateSalespersonAsync(salesperson);
+            return Ok(created);
         }
 
-        // GET: api/Salesperson/Active
-        [HttpGet("Active")]
-        public async Task<ActionResult<IEnumerable<Salesperson>>> GetActiveSalespersons()
+        // ✅ POST: api/Salesperson/update
+        [HttpPost("update")]
+        public async Task<IActionResult> Update([FromBody] Salesperson salesperson)
         {
-            var salespersons = await _salespersonRepository.GetActiveSalespersonsAsync();
-            return Ok(salespersons);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var exists = await _salespersonService.SalespersonExistsAsync(salesperson.SalespersonId);
+            if (!exists) return NotFound();
+
+            var success = await _salespersonService.UpdateSalespersonAsync(salesperson);
+            return success ? Ok("Salesperson updated successfully.") : BadRequest("Failed to update salesperson.");
         }
 
-        // POST: api/Salesperson
-        [HttpPost]
-        public async Task<ActionResult<Salesperson>> CreateSalesperson(Salesperson salesperson)
+        // ✅ POST: api/Salesperson/delete
+        [HttpPost("delete")]
+        public async Task<IActionResult> Delete([FromBody] DeleteRequest request)
         {
-            // Validate model state
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             try
             {
-                // Set default values if not provided
-                if (salesperson.EnteredDate == null)
-                {
-                    salesperson.EnteredDate = DateTime.Now;
-                }
+                var exists = await _salespersonService.SalespersonExistsAsync(request.Id);
+                if (!exists) return NotFound(new { success = false, message = "Salesperson not found." });
 
-                var createdSalesperson = await _salespersonRepository.CreateSalespersonAsync(salesperson);
-                return CreatedAtAction(nameof(GetSalesperson), new { id = createdSalesperson.SalespersonId }, createdSalesperson);
+                var success = await _salespersonService.DeleteSalespersonAsync(request.Id);
+
+                if (!success)
+                    return BadRequest(new { success = false, message = "Failed to delete salesperson." });
+
+                return Ok(new { success = true, message = "Salesperson deleted successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error creating salesperson: {ex.Message}");
+                return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
             }
         }
+    }
 
-        // PUT: api/Salesperson/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSalesperson(int id, Salesperson salesperson)
-        {
-            if (id != salesperson.SalespersonId)
-            {
-                return BadRequest("Salesperson ID mismatch");
-            }
-
-            // Validate model state
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            // Check if salesperson exists
-            if (!await _salespersonRepository.SalespersonExistsAsync(id))
-            {
-                return NotFound();
-            }
-
-            var success = await _salespersonRepository.UpdateSalespersonAsync(salesperson);
-
-            if (!success)
-            {
-                return BadRequest("Failed to update salesperson. The salesperson may have associated sales or other dependencies that prevent modification.");
-            }
-
-            return NoContent();
-        }
-
-        // DELETE: api/Salesperson/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteSalesperson(int id)
-        {
-            if (!await _salespersonRepository.SalespersonExistsAsync(id))
-            {
-                return NotFound();
-            }
-
-            var success = await _salespersonRepository.DeleteSalespersonAsync(id);
-
-            if (!success)
-            {
-                return BadRequest("Cannot delete salesperson. This salesperson has associated sales records in the database. Please reassign or delete the sales first before removing this salesperson.");
-            }
-
-            return NoContent();
-        }
+    // Request model for delete endpoint
+    public class DeleteRequest
+    {
+        public int Id { get; set; }
     }
 }

@@ -1,9 +1,11 @@
-﻿using Backend.Models;
+﻿using Backend.Data;
+using Backend.IRepository;
+using Backend.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 
-namespace Backend.Data.Repositories
+namespace Backend.Repositories
 {
     public class SaleDetailRepository : ISaleDetailRepository
     {
@@ -16,22 +18,28 @@ namespace Backend.Data.Repositories
             _connectionString = configuration.GetConnectionString("DefaultConnection")!;
         }
 
-        public async Task<IEnumerable<SaleDetail>> GetAllSaleDetailsAsync()
+        public async Task<PaginatedResponse<SaleDetail>> GetAllSaleDetailsAsync(int pageNumber = 1, int pageSize = 10)
         {
-            var saleDetails = new List<SaleDetail>();
+            var response = new PaginatedResponse<SaleDetail>();
+            int totalRecords = 0;
 
             using (var connection = new SqlConnection(_connectionString))
             {
                 using (var command = new SqlCommand("sp_GetAllSaleDetails", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("@PageNumber", pageNumber);
+                    command.Parameters.AddWithValue("@PageSize", pageSize);
 
                     await connection.OpenAsync();
                     using (var reader = await command.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            saleDetails.Add(new SaleDetail
+                            if (totalRecords == 0)
+                                totalRecords = reader.GetInt32("TotalRecords");
+
+                            response.Data.Add(new SaleDetail
                             {
                                 SaleDetailId = reader.GetInt32("SaleDetailId"),
                                 SaleId = reader.GetInt32("SaleId"),
@@ -45,7 +53,12 @@ namespace Backend.Data.Repositories
                 }
             }
 
-            return saleDetails;
+            response.CurrentPage = pageNumber;
+            response.PageSize = pageSize;
+            response.TotalRecords = totalRecords;
+            response.TotalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+
+            return response;
         }
 
         public async Task<SaleDetail?> GetSaleDetailByIdAsync(int id)
@@ -175,7 +188,7 @@ namespace Backend.Data.Repositories
             return false;
         }
 
-        public async Task<bool> DeleteSaleDetailAsync(int id)
+        public async Task<(bool success, string message)> DeleteSaleDetailAsync(int id)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
@@ -189,13 +202,15 @@ namespace Backend.Data.Repositories
                     {
                         if (await reader.ReadAsync())
                         {
-                            return reader.GetInt32("Success") == 1;
+                            bool success = reader.GetInt32(reader.GetOrdinal("Success")) == 1;
+                            string message = reader.GetString(reader.GetOrdinal("Message"));
+                            return (success, message);
                         }
                     }
                 }
             }
 
-            return false;
+            return (false, "No response from database.");
         }
 
         public async Task<bool> DeleteSaleDetailsBySaleIdAsync(int saleId)
