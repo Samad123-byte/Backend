@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Backend.Models;
-using Backend.IServices;   // ✅ Change from IRepository to IServices
+using Backend.IServices;
 
 namespace Backend.Controllers
 {
@@ -8,18 +8,21 @@ namespace Backend.Controllers
     [Route("api/[controller]")]
     public class SalesController : ControllerBase
     {
-        private readonly ISaleService _saleService;   // ✅ change to service
+        private readonly ISaleService _saleService;
 
-        public SalesController(ISaleService saleService)  // ✅ inject service
+        public SalesController(ISaleService saleService)
         {
             _saleService = saleService;
         }
 
         // GET: api/Sales
+        
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Sale>>> GetSales()
+        public async Task<ActionResult<PaginatedResponse<Sale>>> GetSales(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var sales = await _saleService.GetAllSalesAsync();
+            var sales = await _saleService.GetAllSalesAsync(pageNumber, pageSize);
             return Ok(sales);
         }
 
@@ -110,7 +113,6 @@ namespace Backend.Controllers
                 return BadRequest(ModelState);
             }
 
-            // ✅ Now use service to check existence:
             var existingSale = await _saleService.GetSaleByIdAsync(id);
             if (existingSale == null)
             {
@@ -127,7 +129,7 @@ namespace Backend.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Sales/5
+        // ✅ FIXED: DELETE with proper error handling
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSale(int id)
         {
@@ -139,14 +141,14 @@ namespace Backend.Controllers
                     return NotFound(new { success = false, message = "Sale not found." });
                 }
 
-                var success = await _saleService.DeleteSaleAsync(id);
+                var (success, message) = await _saleService.DeleteSaleAsync(id);
 
                 if (!success)
                 {
-                    return BadRequest(new { success = false, message = "Failed to delete sale." });
+                    return BadRequest(new { success = false, message });
                 }
 
-                return NoContent();
+                return Ok(new { success = true, message });
             }
             catch (InvalidOperationException ex)
             {
@@ -154,7 +156,7 @@ namespace Backend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+                return StatusCode(500, new { success = false, message = "An unexpected error occurred: " + ex.Message });
             }
         }
     }
