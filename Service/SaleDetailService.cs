@@ -61,21 +61,11 @@ namespace Backend.Service
             }
         }
 
-        public async Task<bool> DeleteSaleDetailAsync(int id)
+        public async Task<(bool success, string message)> DeleteSaleDetailAsync(int id)
         {
-            try
-            {
-                return await _saleDetailRepository.DeleteSaleDetailAsync(id);
-            }
-            catch (SqlException ex)
-            {
-                throw ex.Number switch
-                {
-                    547 => new InvalidOperationException("Cannot delete sale detail. This record is referenced by other records in the database."),
-                    _ => new InvalidOperationException($"Database error: {ex.Message}")
-                };
-            }
+            return await _saleDetailRepository.DeleteSaleDetailAsync(id);
         }
+
 
         public async Task<bool> DeleteSaleDetailsBySaleIdAsync(int saleId)
         {
