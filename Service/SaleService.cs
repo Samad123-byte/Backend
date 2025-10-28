@@ -14,9 +14,9 @@ namespace Backend.Service
             _saleRepository = saleRepository;
         }
 
-        public async Task<IEnumerable<Sale>> GetAllSalesAsync()
+        public async Task<PaginatedResponse<Sale>> GetAllSalesAsync(int pageNumber, int pageSize)
         {
-            return await _saleRepository.GetAllSalesAsync();
+            return await _saleRepository.GetAllSalesAsync(pageNumber, pageSize);
         }
 
         public async Task<Sale?> GetSaleByIdAsync(int id)
@@ -56,7 +56,8 @@ namespace Backend.Service
             }
         }
 
-        public async Task<bool> DeleteSaleAsync(int id)
+        // ✅ FIXED: Return tuple with success and message
+        public async Task<(bool success, string message)> DeleteSaleAsync(int id)
         {
             try
             {
@@ -64,11 +65,15 @@ namespace Backend.Service
             }
             catch (SqlException ex)
             {
-                throw ex.Number switch
+                return ex.Number switch
                 {
-                    547 => new InvalidOperationException("Cannot delete sale. This sale has associated sale details. Please delete related sale details first."),
-                    _ => new InvalidOperationException($"Database error: {ex.Message}")
+                    547 => (false, "Cannot delete sale. This sale has associated sale details. Please delete related sale details first."),
+                    _ => (false, $"Database error: {ex.Message}")
                 };
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error: {ex.Message}");
             }
         }
 
