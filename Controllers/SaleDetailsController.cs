@@ -132,19 +132,14 @@ namespace Backend.Controllers
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var exists = await _saleDetailService.SaleDetailExistsAsync(id);
-            if (!exists)
-                return NotFound(new
-                {
-                    success = false,
-                    message = $"Sale detail with ID {id} not found."
-                });
+            var (success, message) = await _saleDetailService.DeleteSaleDetailAsync(id);
 
-            var success = await _saleDetailService.DeleteSaleDetailAsync(id);
-            return success
-                ? Ok(new { success = true, message = "Sale detail deleted successfully." })
-                : BadRequest(new { success = false, message = "Failed to delete sale detail." });
+            if (success)
+                return Ok(new { success = true, message });
+            else
+                return BadRequest(new { success = false, message });
         }
+
 
         // ✅ DELETE: api/SaleDetails/deleteBySale/{saleId}
         [HttpDelete("deleteBySale/{saleId}")]
