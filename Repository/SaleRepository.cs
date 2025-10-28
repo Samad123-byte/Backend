@@ -1,10 +1,10 @@
-﻿using Backend.Data;
+using Backend.Data;
 using Backend.IRepository;
 using Backend.Models;
 using Microsoft.Data.SqlClient;
 using System.Data;
 
-namespace Backend.Repository
+namespace Backend.Repositories
 {
     public class SaleRepository : ISaleRepository
     {
@@ -16,8 +16,7 @@ namespace Backend.Repository
             _context = context;
             _connectionString = configuration.GetConnectionString("DefaultConnection")!;
         }
-
-        public async Task<IEnumerable<Sale>> GetAllSalesAsync()
+        public async Task<PaginatedResponse<Sale>> GetAllSalesAsync(int pageNumber, int pageSize)
         {
             var sales = new List<Sale>();
 
@@ -46,9 +45,22 @@ namespace Backend.Repository
                 }
             }
 
-            return sales;
-        }
+            // Paginate in memory
+            var totalRecords = sales.Count;
+            var paginatedSales = sales
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
 
+            return new PaginatedResponse<Sale>
+            {
+                Data = paginatedSales,
+                CurrentPage = pageNumber,
+                PageSize = pageSize,
+                TotalRecords = totalRecords,
+                TotalPages = (int)Math.Ceiling(totalRecords / (double)pageSize)
+            };
+        }
         public async Task<Sale?> GetSaleByIdAsync(int id)
         {
             using (var connection = new SqlConnection(_connectionString))
@@ -141,7 +153,8 @@ namespace Backend.Repository
             return false;
         }
 
-        public async Task<bool> DeleteSaleAsync(int id)
+        // ✅ FIXED: Return tuple with success and message
+        public async Task<(bool success, string message)> DeleteSaleAsync(int id)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
@@ -155,13 +168,15 @@ namespace Backend.Repository
                     {
                         if (await reader.ReadAsync())
                         {
-                            return reader.GetInt32("Success") == 1;
+                            bool success = reader.GetBoolean(reader.GetOrdinal("Success"));
+                            string message = reader.GetString(reader.GetOrdinal("Message"));
+                            return (success, message);
                         }
                     }
                 }
             }
 
-            return false;
+            return (false, "No response from database.");
         }
 
         public async Task<bool> SaleExistsAsync(int id)
@@ -256,9 +271,6 @@ namespace Backend.Repository
 
         public async Task<Sale?> GetSaleWithDetailsAsync(int id)
         {
-            // This method would typically use Entity Framework to include SaleDetails
-            // Since you're using stored procedures, you might need a separate SP for this
-            // For now, just get the sale without details
             return await GetSaleByIdAsync(id);
         }
     }
