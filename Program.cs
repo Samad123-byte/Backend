@@ -1,7 +1,7 @@
 using Backend.Data;
 using Backend.IRepository;
 using Backend.IServices;
-using Backend.Repository;
+using Backend.Repositories;
 using Backend.Service;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -9,12 +9,13 @@ using System.Text.Json;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure JSON serialization to use PascalCase (matching your backend models)
+// Configure JSON serialization to use camelCase (matching JavaScript conventions)
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Keep PascalCase naming (ProductId, Name, etc.)
-        options.JsonSerializerOptions.PropertyNamingPolicy = null; // This keeps original property names
-        options.JsonSerializerOptions.DictionaryKeyPolicy = null;
+        // Use camelCase naming (productId, name, etc.) - CHANGED THIS LINE
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
 
         // Optional: Make JSON more readable
         options.JsonSerializerOptions.WriteIndented = true;
@@ -22,7 +23,6 @@ builder.Services.AddControllers()
         // Handle null values gracefully
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -48,10 +48,12 @@ builder.Services.AddScoped<ISaleDetailRepository, SaleDetailRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<ISalespersonRepository, SalespersonRepository>();
 
+// Register Services for Dependency Injection
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
 builder.Services.AddScoped<ISaleDetailService, SaleDetailService>();
 builder.Services.AddScoped<ISalespersonService, SalespersonService>();
+
 
 var app = builder.Build();
 
