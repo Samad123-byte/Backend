@@ -9,7 +9,7 @@ namespace Backend.IServices
         Task<IEnumerable<SaleDetail>> GetSaleDetailsBySaleIdAsync(int saleId);
         Task<SaleDetail> CreateSaleDetailAsync(SaleDetail saleDetail);
         Task<bool> UpdateSaleDetailAsync(SaleDetail saleDetail);
-        Task<bool> DeleteSaleDetailAsync(int id);
+        Task<(bool success, string message)> DeleteSaleDetailAsync(int id);
         Task<bool> DeleteSaleDetailsBySaleIdAsync(int saleId);
         Task<decimal> GetSaleTotalAsync(int saleId);
         Task<bool> SaleDetailExistsAsync(int id);
