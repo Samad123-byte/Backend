@@ -36,68 +36,63 @@ namespace Backend.Service
 
         public async Task<Salesperson> CreateSalespersonAsync(Salesperson salesperson)
         {
-            try
+            var created = await _salespersonRepository.CreateSalespersonAsync(salesperson);
+
+            if (created != null)
             {
-                return await _salespersonRepository.CreateSalespersonAsync(salesperson);
+                return created;
             }
-            catch (SqlException ex)
+            else
             {
-                throw ex.Number switch
-                {
-                    2627 => new InvalidOperationException("A salesperson with this code already exists"),
-                    2601 => new InvalidOperationException("Duplicate salesperson code"),
-                    _ => new InvalidOperationException($"Database error: {ex.Message}")
-                };
+                throw new InvalidOperationException("Duplicate Name or Code");
             }
         }
 
-        public async Task<bool> UpdateSalespersonAsync(Salesperson salesperson)
+        public async Task<int> UpdateSalespersonAsync(Salesperson salesperson)
         {
-            try
+            var result = await _salespersonRepository.UpdateSalespersonAsync(salesperson);
+
+            if (result == -1)
             {
-                return await _salespersonRepository.UpdateSalespersonAsync(salesperson);
+                throw new InvalidOperationException("Duplicate Name or Code.");
             }
-            catch (SqlException ex)
+            else if (result == 0)
             {
-                throw ex.Number switch
-                {
-                    2627 => new InvalidOperationException("A salesperson with this code already exists"),
-                    2601 => new InvalidOperationException("Duplicate salesperson code"),
-                    _ => new InvalidOperationException($"Database error: {ex.Message}")
-                };
+                throw new InvalidOperationException("Update failed — salesperson not found.");
             }
+
+            return result;
         }
 
 
-        public async Task<bool> DeleteSalespersonAsync(int id)
+
+        // Implements repository interface method
+        public async Task<int> DeleteSalespersonAsync(int id)
         {
-            try
-            {
-                return await _salespersonRepository.DeleteSalespersonAsync(id);
-            }
-            catch (SqlException ex)
-            {
-                // Error 547 is foreign key constraint violation
-                if (ex.Number == 547)
-                {
-                    throw new InvalidOperationException(
-                        "Cannot delete salesperson. This salesperson has associated sales records in the database. " +
-                        "Please reassign or delete the sales first before removing this salesperson."
-                    );
-                }
-
-                // For other SQL errors, wrap them
-                throw new InvalidOperationException($"Database error: {ex.Message}", ex);
-            }
-            catch (Exception ex)
-            {
-                // Don't swallow other exceptions
-                throw new InvalidOperationException($"Error deleting salesperson: {ex.Message}", ex);
-            }
+            return await _salespersonRepository.DeleteSalespersonAsync(id);
         }
+
+        // Handles deletion logic and maps codes to messages
+        public async Task<(bool Success, string Message)> DeleteSalespersonLogicAsync(int id)
+        {
+            if (!await SalespersonExistsAsync(id))
+                return (false, "Salesperson not found.");
+
+            int result = await DeleteSalespersonAsync(id);
+
+            // Map result codes to messages
+            if (result == 1) return (true, "Salesperson deleted successfully.");
+            if (result == -1) return (false, "Salesperson not found.");
+            if (result == -2) return (false, "Cannot delete salesperson — it has related sales records.");
+
+            return (false, "Unexpected error occurred while deleting salesperson.");
+        }
+
+        // Checks if salesperson exists
         public async Task<bool> SalespersonExistsAsync(int id)
         {
             return await _salespersonRepository.SalespersonExistsAsync(id);
         }
+
     }
 }
