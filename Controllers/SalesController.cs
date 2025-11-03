@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
-using Backend.Models;
 using Backend.IServices;
+using Backend.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controllers
 {
@@ -16,148 +16,138 @@ namespace Backend.Controllers
         }
 
         // GET: api/Sales
-        
         [HttpGet]
-        public async Task<ActionResult<PaginatedResponse<Sale>>> GetSales(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetSales([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var sales = await _saleService.GetAllSalesAsync(pageNumber, pageSize);
-            return Ok(sales);
+            return Ok(new
+            {
+                success = true,
+                message = "Fetched sales successfully.",
+                data = sales.Data,
+                currentPage = sales.CurrentPage,
+                pageSize = sales.PageSize,
+                totalRecords = sales.TotalRecords,
+                totalPages = sales.TotalPages
+            });
         }
 
         // GET: api/Sales/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Sale>> GetSale(int id)
+        public async Task<IActionResult> GetSale(int id)
         {
             var sale = await _saleService.GetSaleByIdAsync(id);
-
             if (sale == null)
-            {
-                return NotFound();
-            }
+                return NotFound(new { success = false, message = $"Sale with ID {id} not found." });
 
-            return Ok(sale);
+            return Ok(new { success = true, message = "Fetched sale successfully.", data = sale });
         }
 
         // GET: api/Sales/5/WithDetails
         [HttpGet("{id}/WithDetails")]
-        public async Task<ActionResult<Sale>> GetSaleWithDetails(int id)
+        public async Task<IActionResult> GetSaleWithDetails(int id)
         {
             var sale = await _saleService.GetSaleWithDetailsAsync(id);
-
             if (sale == null)
-            {
-                return NotFound();
-            }
+                return NotFound(new { success = false, message = "Sale not found." });
 
-            return Ok(sale);
+            return Ok(new
+            {
+                success = true,
+                message = "Fetched sale with details successfully.",
+                data = sale
+            });
         }
 
         // GET: api/Sales/ByDateRange?startDate=2024-01-01&endDate=2024-12-31
         [HttpGet("ByDateRange")]
-        public async Task<ActionResult<IEnumerable<Sale>>> GetSalesByDateRange(
-            [FromQuery] DateTime startDate,
-            [FromQuery] DateTime endDate)
+        public async Task<IActionResult> GetSalesByDateRange([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
         {
             var sales = await _saleService.GetSalesByDateRangeAsync(startDate, endDate);
-            return Ok(sales);
+            return Ok(new { success = true, message = "Fetched sales by date range.", data = sales });
         }
 
         // GET: api/Sales/BySalesperson/5
         [HttpGet("BySalesperson/{salespersonId}")]
-        public async Task<ActionResult<IEnumerable<Sale>>> GetSalesBySalesperson(int salespersonId)
+        public async Task<IActionResult> GetSalesBySalesperson(int salespersonId)
         {
             var sales = await _saleService.GetSalesBySalespersonAsync(salespersonId);
-            return Ok(sales);
+            return Ok(new { success = true, message = "Fetched sales by salesperson.", data = sales });
         }
 
         // POST: api/Sales
         [HttpPost]
-        public async Task<ActionResult<Sale>> CreateSale(Sale sale)
+        public async Task<IActionResult> CreateSale([FromBody] Sale sale)
         {
             if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+                return BadRequest(new { success = false, message = "Invalid sale data.", errors = ModelState });
 
-            try
-            {
-                if (sale.SaleDate == default(DateTime))
-                {
-                    sale.SaleDate = DateTime.Now;
-                }
+            if (sale.SaleDate == default)
+                sale.SaleDate = DateTime.Now;
 
-                sale.UpdatedDate = null;
+            sale.UpdatedDate = null;
 
-                var createdSale = await _saleService.CreateSaleAsync(sale);
-                return CreatedAtAction(nameof(GetSale), new { id = createdSale.SaleId }, createdSale);
-            }
-            catch (Exception ex)
+            var createdSale = await _saleService.CreateSaleAsync(sale);
+            return CreatedAtAction(nameof(GetSale), new { id = createdSale.SaleId }, new
             {
-                return BadRequest($"Error creating sale: {ex.Message}");
-            }
+                success = true,
+                message = "Sale created successfully.",
+                data = createdSale
+            });
         }
 
         // PUT: api/Sales/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSale(int id, Sale sale)
+        public async Task<IActionResult> UpdateSale(int id, [FromBody] Sale sale)
         {
             if (id != sale.SaleId)
-            {
-                return BadRequest("Sale ID mismatch");
-            }
+                return BadRequest(new { success = false, message = "Sale ID mismatch." });
 
             if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+                return BadRequest(new { success = false, message = "Invalid sale data.", errors = ModelState });
 
             var existingSale = await _saleService.GetSaleByIdAsync(id);
             if (existingSale == null)
-            {
-                return NotFound();
-            }
+                return NotFound(new { success = false, message = "Sale not found." });
 
             var success = await _saleService.UpdateSaleAsync(sale);
-
             if (!success)
-            {
-                return BadRequest("Failed to update sale. The sale may have related sale details or other dependencies that prevent modification.");
-            }
+                return BadRequest(new { success = false, message = "Failed to update sale." });
 
-            return NoContent();
+            return Ok(new { success = true, message = "Sale updated successfully." });
         }
 
-        // ✅ FIXED: DELETE with proper error handling
+        // DELETE: api/Sales/DeleteItem
+        [HttpPost("DeleteItem")]
+        public async Task<IActionResult> DeleteSaleItem([FromBody] Sale sale)
+        {
+            if (sale.SaleId <= 0 || sale.SaleDetails == null || sale.SaleDetails.Count == 0)
+                return BadRequest(new { success = false, message = "Invalid SaleId or ProductId." });
+
+            // Assuming deleting the first product in SaleDetails
+            var productId = sale.SaleDetails[0].ProductId;
+
+            var updatedSale = await _saleService.DeleteSaleDetailAsync(sale.SaleId, productId);
+            if (updatedSale == null)
+                return BadRequest(new { success = false, message = "Sale not found or item could not be deleted." });
+
+            return Ok(new
+            {
+                success = true,
+                message = "Sale item deleted successfully.",
+                data = updatedSale
+            });
+        }
+        // DELETE: api/Sales/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSale(int id)
         {
-            try
-            {
-                var existingSale = await _saleService.GetSaleByIdAsync(id);
-                if (existingSale == null)
-                {
-                    return NotFound(new { success = false, message = "Sale not found." });
-                }
+            var existingSale = await _saleService.GetSaleByIdAsync(id);
+            if (existingSale == null)
+                return NotFound(new { success = false, message = "Sale not found." });
 
-                var (success, message) = await _saleService.DeleteSaleAsync(id);
-
-                if (!success)
-                {
-                    return BadRequest(new { success = false, message });
-                }
-
-                return Ok(new { success = true, message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "An unexpected error occurred: " + ex.Message });
-            }
+            var (success, message) = await _saleService.DeleteSaleAsync(id);
+            return success ? Ok(new { success, message }) : BadRequest(new { success, message });
         }
     }
 }
