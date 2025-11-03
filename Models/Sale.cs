@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Backend.Models
 {
-    [Table("Sales")] // Fixed: Changed from "SalesMaster" to "Sales" to match stored procedures
+    [Table("Sales")]
     public class Sale
     {
         [Key]
@@ -13,19 +13,33 @@ namespace Backend.Models
         [Range(0, double.MaxValue, ErrorMessage = "Total must be positive")]
         public decimal Total { get; set; }
 
-        [Required]
-        public DateTime SaleDate { get; set; }
+        [Column(TypeName = "datetime")]
+        public DateTime? SaleDate { get; set; }
 
         public DateTime CreatedDate { get; set; }
 
         public int? SalespersonId { get; set; }
 
-        [StringLength(500)] // Updated to match stored procedure parameter length
+        [StringLength(500)]
         public string? Comments { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
-        // Navigation property to SaleDetails
-        public virtual ICollection<SaleDetail>? SaleDetails { get; set; }
+        [NotMapped]
+        public string? SalespersonName { get; set; }
+
+        [NotMapped]
+        public List<SaleDetailDto>? SaleDetails { get; set; }
+
+        public class SaleDetailDto
+        {
+            public int ProductId { get; set; }
+            public decimal RetailPrice { get; set; }
+            public int Quantity { get; set; }
+            public decimal? Discount { get; set; }
+
+            public string RowState { get; set; } = "Unchanged";
+        }
+
     }
 }
