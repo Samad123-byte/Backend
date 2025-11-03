@@ -1,7 +1,6 @@
 using Backend.IRepository;
 using Backend.IServices;
 using Backend.Models;
-using Microsoft.Data.SqlClient;
 
 namespace Backend.Service
 {
@@ -26,56 +25,58 @@ namespace Backend.Service
 
         public async Task<Sale> CreateSaleAsync(Sale sale)
         {
-            try
-            {
-                return await _saleRepository.CreateSaleAsync(sale);
-            }
-            catch (SqlException ex)
-            {
-                throw ex.Number switch
-                {
-                    547 => new InvalidOperationException("Cannot create sale. The referenced salesperson does not exist."),
-                    _ => new InvalidOperationException($"Database error: {ex.Message}")
-                };
-            }
+            // The repository method already handles Sale + SaleDetails in one go
+            var createdSale = await _saleRepository.CreateSaleAsync(sale);
+            if (createdSale == null)
+                throw new InvalidOperationException("Failed to create sale.");
+
+            return createdSale;
         }
 
         public async Task<bool> UpdateSaleAsync(Sale sale)
         {
-            try
-            {
-                return await _saleRepository.UpdateSaleAsync(sale);
-            }
-            catch (SqlException ex)
-            {
-                throw ex.Number switch
-                {
-                    547 => new InvalidOperationException("Cannot update sale. The referenced salesperson does not exist or sale has dependencies."),
-                    _ => new InvalidOperationException($"Database error: {ex.Message}")
-                };
-            }
+            // The repository method handles updating Sale + SaleDetails via SP
+            return await _saleRepository.UpdateSaleAsync(sale);
         }
 
-        // ✅ FIXED: Return tuple with success and message
         public async Task<(bool success, string message)> DeleteSaleAsync(int id)
         {
+            if (!await SaleExistsAsync(id))
+            {
+                return (false, "Sale not found");
+            }
+
             try
             {
-                return await _saleRepository.DeleteSaleAsync(id);
-            }
-            catch (SqlException ex)
-            {
-                return ex.Number switch
-                {
-                    547 => (false, "Cannot delete sale. This sale has associated sale details. Please delete related sale details first."),
-                    _ => (false, $"Database error: {ex.Message}")
-                };
+                int result = await _saleRepository.DeleteSaleAsync(id);
+                return (true, "Sale deleted successfully");
             }
             catch (Exception ex)
             {
-                return (false, $"Error: {ex.Message}");
+                // Return the actual DB exception (FK violation, etc.)
+                return (false, ex.InnerException?.Message ?? ex.Message);
             }
         }
+
+
+
+        public async Task<bool> SaleExistsAsync(int id)
+        {
+            return await _saleRepository.SaleExistsAsync(id);
+        }
+
+        public async Task<Sale?> DeleteSaleDetailAsync(int saleId, int productId)
+        {
+            // Check if sale exists first
+            if (!await SaleExistsAsync(saleId))
+                return null;
+
+            // Delete the sale item via repository
+            var updatedSale = await _saleRepository.DeleteSaleDetailAsync(saleId, productId);
+
+            return updatedSale;
+        }
+
 
         public async Task<IEnumerable<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate)
         {
