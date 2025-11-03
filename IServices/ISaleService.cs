@@ -12,6 +12,7 @@ namespace Backend.IServices
         Task<(bool success, string message)> DeleteSaleAsync(int id); // ✅ Changed return type
         Task<IEnumerable<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate);
         Task<IEnumerable<Sale>> GetSalesBySalespersonAsync(int salespersonId);
+        Task<Sale?> DeleteSaleDetailAsync(int saleId, int productId);
         Task<Sale?> GetSaleWithDetailsAsync(int id);
     }
 }
