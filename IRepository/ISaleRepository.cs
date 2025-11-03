@@ -10,10 +10,14 @@ namespace Backend.IRepository
         Task<Sale?> GetSaleByIdAsync(int id);
         Task<Sale> CreateSaleAsync(Sale sale);
         Task<bool> UpdateSaleAsync(Sale sale);
-        Task<(bool success, string message)> DeleteSaleAsync(int id); // ✅ Changed return type
+        Task<int> DeleteSaleAsync(int id); // ✅ Changed return type
         Task<bool> SaleExistsAsync(int id);
+        Task<Sale?> DeleteSaleDetailAsync(int saleId, int productId);
         Task<IEnumerable<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate);
         Task<IEnumerable<Sale>> GetSalesBySalespersonAsync(int salespersonId);
         Task<Sale?> GetSaleWithDetailsAsync(int id);
+      
+
+
     }
 }
