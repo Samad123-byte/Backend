@@ -5,7 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 
-namespace Backend.Repositories
+namespace Backend.Repository
 {
     public class ProductRepository : IProductRepository
     {
@@ -98,70 +98,42 @@ namespace Backend.Repositories
 
         public async Task<Product> CreateProductAsync(Product product)
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                using (var command = new SqlCommand("sp_CreateProduct", connection))
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@Name", product.Name);
-                    command.Parameters.AddWithValue("@Code", (object?)product.Code ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@ImageURL", (object?)product.ImageURL ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@CostPrice", (object?)product.CostPrice ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@RetailPrice", (object?)product.RetailPrice ?? DBNull.Value);
+            using var connection = new SqlConnection(_connectionString);
+            using var command = new SqlCommand("sp_CreateProduct", connection);
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.AddWithValue("@Name", product.Name);
+            command.Parameters.AddWithValue("@Code", (object?)product.Code ?? DBNull.Value);
+            command.Parameters.AddWithValue("@ImageURL", (object?)product.ImageURL ?? DBNull.Value);
+            command.Parameters.AddWithValue("@CostPrice", (object?)product.CostPrice ?? DBNull.Value);
+            command.Parameters.AddWithValue("@RetailPrice", (object?)product.RetailPrice ?? DBNull.Value);
 
-                    await connection.OpenAsync();
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync())
-                        {
-                            return new Product
-                            {
-                                ProductId = reader.GetInt32("ProductId"),
-                                Name = reader.GetString("Name"),
-                                Code = reader.IsDBNull("Code") ? null : reader.GetString("Code"),
-                                ImageURL = reader.IsDBNull("ImageURL") ? null : reader.GetString("ImageURL"),
-                                CostPrice = reader.IsDBNull("CostPrice") ? null : reader.GetDecimal("CostPrice"),
-                                RetailPrice = reader.IsDBNull("RetailPrice") ? null : reader.GetDecimal("RetailPrice"),
-                                CreationDate = reader.IsDBNull("CreationDate") ? null : reader.GetDateTime("CreationDate"),
-                                UpdatedDate = reader.IsDBNull("UpdatedDate") ? null : reader.GetDateTime("UpdatedDate")
-                            };
-                        }
-                    }
-                }
-            }
-
-            throw new Exception("Failed to create product");
+            await connection.OpenAsync();
+            await command.ExecuteNonQueryAsync(); // No Result needed
+            return product;
         }
 
-        public async Task<bool> UpdateProductAsync(Product product)
+
+
+
+
+        public async Task<int> UpdateProductAsync(Product product)
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                using (var command = new SqlCommand("sp_UpdateProduct", connection))
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@ProductId", product.ProductId);
-                    command.Parameters.AddWithValue("@Name", product.Name);
-                    command.Parameters.AddWithValue("@Code", (object?)product.Code ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@ImageURL", (object?)product.ImageURL ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@CostPrice", (object?)product.CostPrice ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@RetailPrice", (object?)product.RetailPrice ?? DBNull.Value);
+            using var connection = new SqlConnection(_connectionString);
+            using var command = new SqlCommand("sp_UpdateProduct", connection);
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.AddWithValue("@ProductId", product.ProductId);
+            command.Parameters.AddWithValue("@Name", product.Name);
+            command.Parameters.AddWithValue("@Code", (object?)product.Code ?? DBNull.Value);
+            command.Parameters.AddWithValue("@ImageURL", (object?)product.ImageURL ?? DBNull.Value);
+            command.Parameters.AddWithValue("@CostPrice", (object?)product.CostPrice ?? DBNull.Value);
+            command.Parameters.AddWithValue("@RetailPrice", (object?)product.RetailPrice ?? DBNull.Value);
 
-                    await connection.OpenAsync();
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync())
-                        {
-                            return reader.GetInt32("Success") == 1;
-                        }
-                    }
-                }
-            }
-
-            return false;
+            await connection.OpenAsync();
+            var result = await command.ExecuteScalarAsync();
+            return (int)result;
         }
 
-        public async Task<bool> DeleteProductAsync(int id)
+        public async Task<int> DeleteProductAsync(int id)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
@@ -171,18 +143,20 @@ namespace Backend.Repositories
                     command.Parameters.AddWithValue("@ProductId", id);
 
                     await connection.OpenAsync();
+
                     using (var reader = await command.ExecuteReaderAsync())
                     {
                         if (await reader.ReadAsync())
                         {
-                            return reader.GetInt32("Success") == 1;
+                            return reader.GetInt32("Result"); // ✅ matches your SP output
                         }
                     }
                 }
             }
 
-            return false;
+            return 0;
         }
+
 
         public async Task<bool> ProductExistsAsync(int id)
         {
