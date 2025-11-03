@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Backend.Models;
 
 namespace Backend.Data
@@ -10,21 +10,11 @@ namespace Backend.Data
         }
 
         public DbSet<Product> Products { get; set; }
-        public DbSet<SaleDetail> SaleDetails { get; set; }
         public DbSet<Sale> Sales { get; set; }
         public DbSet<Salesperson> Salespersons { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Configure SaleDetail entity
-            modelBuilder.Entity<SaleDetail>(entity =>
-            {
-                entity.ToTable("SaleDetails"); // Explicitly specify the table name
-                entity.HasKey(e => e.SaleDetailId);
-                entity.Property(e => e.RetailPrice).HasColumnType("decimal(10,2)");
-                entity.Property(e => e.Discount).HasColumnType("decimal(5,2)");
-            });
-
             // Configure Sale entity
             modelBuilder.Entity<Sale>(entity =>
             {
@@ -47,7 +37,7 @@ namespace Backend.Data
                 .HasOne<Salesperson>()
                 .WithMany(s => s.Sales)
                 .HasForeignKey(s => s.SalespersonId)
-                .OnDelete(DeleteBehavior.SetNull); // If salesperson is deleted, set SalespersonId to null in sales
+                .OnDelete(DeleteBehavior.SetNull);
 
             base.OnModelCreating(modelBuilder);
         }
