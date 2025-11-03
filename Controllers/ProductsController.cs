@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
-using Backend.Models;
 using Backend.IServices;
+using Backend.Models;
+using Microsoft.AspNetCore.Mvc;
+
 
 namespace Backend.Controllers
 {
@@ -36,9 +37,8 @@ namespace Backend.Controllers
             return Ok(product);
         }
 
-        // ✅ POST: api/Products/create
         [HttpPost("create")]
-        public async Task<ActionResult<Product>> CreateProduct([FromBody] Product product)
+        public async Task<IActionResult> CreateProduct([FromBody] Product product)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -46,13 +46,14 @@ namespace Backend.Controllers
             try
             {
                 var createdProduct = await _productService.CreateProductAsync(product);
-                return Ok(createdProduct);
+                return Ok(new { success = true, message = "Product created successfully", data = createdProduct });
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                return BadRequest($"Error creating product: {ex.Message}");
+                return BadRequest(new { success = false, message = ex.Message });
             }
         }
+
 
         // ✅ POST: api/Products/update
         [HttpPost("update")]
@@ -61,41 +62,29 @@ namespace Backend.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            if (!await _productService.ProductExistsAsync(product.ProductId))
-                return NotFound();
-
             var success = await _productService.UpdateProductAsync(product);
 
-            if (!success)
-                return BadRequest("Failed to update product.");
+           
+                //return BadRequest("Failed to update product.");
 
             return Ok("Product updated successfully.");
         }
 
-        // ✅ POST: api/Products/delete
         [HttpPost("delete")]
-        public async Task<IActionResult> DeleteProduct([FromBody] int id)
+        public async Task<IActionResult> Delete([FromBody] DeleteRequest request)
         {
-            try
-            {
-                if (!await _productService.ProductExistsAsync(id))
-                    return NotFound(new { success = false, message = "Product not found." });
+            var service = (ProductService)_productService; // cast to concrete service
+            var result = await service.DeleteProductLogicAsync(request.Id);
 
-                var success = await _productService.DeleteProductAsync(id);
-
-                if (!success)
-                    return BadRequest(new { success = false, message = "Failed to delete product." });
-
-                return Ok(new { success = true, message = "Product deleted successfully." });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
-            }
+            if (result.Success)
+                return Ok(new { success = true, message = result.Message });
+            else if (result.Message.Contains("used in sales"))
+                return BadRequest(new { success = false, message = result.Message });
+            else if (result.Message.Contains("not found"))
+                return NotFound(new { success = false, message = result.Message });
+            else
+                return BadRequest(new { success = false, message = result.Message });
         }
     }
+
 }
