@@ -2,6 +2,7 @@ using Backend.Data;
 using Backend.IRepository;
 using Backend.IServices;
 using Backend.Repositories;
+using Backend.Repository;
 using Backend.Service;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -42,20 +43,27 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+
+
 // Register Repositories for Dependency Injection
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<ISaleDetailRepository, SaleDetailRepository>();
+
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<ISalespersonRepository, SalespersonRepository>();
 
 // Register Services for Dependency Injection
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
-builder.Services.AddScoped<ISaleDetailService, SaleDetailService>();
+
 builder.Services.AddScoped<ISalespersonService, SalespersonService>();
+
+builder.Services.AddScoped<ISaleService, SaleService>();
+
 
 
 var app = builder.Build();
+
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
