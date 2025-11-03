@@ -5,7 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 
-namespace Backend.Repositories
+namespace Backend.Repository
 {
     public class SalespersonRepository : ISalespersonRepository
     {
@@ -152,67 +152,83 @@ namespace Backend.Repositories
 
         public async Task<Salesperson> CreateSalespersonAsync(Salesperson salesperson)
         {
-            using (var connection = new SqlConnection(_connectionString))
+            using var connection = new SqlConnection(_connectionString);
+            using var command = new SqlCommand("sp_InsertSalesperson", connection)
             {
-                using (var command = new SqlCommand("sp_InsertSalesperson", connection))
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@Name", salesperson.Name);
-                    command.Parameters.AddWithValue("@Code", salesperson.Code);
-                    command.Parameters.AddWithValue("@EnteredDate", (object?)salesperson.EnteredDate ?? DBNull.Value);
+                CommandType = CommandType.StoredProcedure
+            };
 
-                    await connection.OpenAsync();
-                    var result = await command.ExecuteScalarAsync();
+            command.Parameters.AddWithValue("@Name", salesperson.Name);
+            command.Parameters.AddWithValue("@Code", salesperson.Code);
+            command.Parameters.AddWithValue("@EnteredDate", (object?)salesperson.EnteredDate ?? DBNull.Value);
 
-                    if (result != null)
-                    {
-                        int newSalespersonId = Convert.ToInt32(result);
+            await connection.OpenAsync();
+            var result = (int)(await command.ExecuteScalarAsync() ?? 0); // read Result from SP
 
-                        // Get the newly created salesperson to return it
-                        return await GetSalespersonByIdAsync(newSalespersonId) ?? throw new Exception("Failed to retrieve created salesperson");
-                    }
-                }
+            if (result == 1)
+            {
+                // Successfully inserted → fetch the newly created salesperson by Code
+                return await GetSalespersonByCodeAsync(salesperson.Code)
+                       ?? throw new Exception("Failed to retrieve created salesperson");
             }
-
-            throw new Exception("Failed to create salesperson");
+            else if (result == -1)
+            {
+                throw new InvalidOperationException("Duplicate Name or Code");
+            }
+            else
+            {
+                throw new Exception("Failed to create salesperson");
+            }
         }
 
-        public async Task<bool> UpdateSalespersonAsync(Salesperson salesperson)
+        public async Task<int> UpdateSalespersonAsync(Salesperson salesperson)
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                using (var command = new SqlCommand("sp_UpdateSalesperson", connection))
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@SalespersonId", salesperson.SalespersonId);
-                    command.Parameters.AddWithValue("@Name", salesperson.Name);
-                    command.Parameters.AddWithValue("@Code", salesperson.Code);
-                    command.Parameters.AddWithValue("@EnteredDate", (object?)salesperson.EnteredDate ?? DBNull.Value);
+            using var connection = new SqlConnection(_connectionString);
+            using var command = new SqlCommand("sp_UpdateSalesperson", connection);
+            command.CommandType = CommandType.StoredProcedure;
 
-                    await connection.OpenAsync();
-                    int rowsAffected = await command.ExecuteNonQueryAsync();
+            command.Parameters.AddWithValue("@SalespersonId", salesperson.SalespersonId);
+            command.Parameters.AddWithValue("@Name", salesperson.Name);
+            command.Parameters.AddWithValue("@Code", (object?)salesperson.Code ?? DBNull.Value);
+            command.Parameters.AddWithValue("@EnteredDate", (object?)salesperson.EnteredDate ?? DBNull.Value);
 
-                    return rowsAffected > 0;
-                }
-            }
+            await connection.OpenAsync();
+            var result = await command.ExecuteScalarAsync();
+            return (int)result;
         }
 
-        public async Task<bool> DeleteSalespersonAsync(int id)
+
+
+        // public async Task<int> DeleteSalespersonAsync(int salespersonId)
+        // {
+        //  using var connection = new SqlConnection(_connectionString);
+        // using var command = new SqlCommand("sp_DeleteSalesperson", connection);
+        //command.CommandType = CommandType.StoredProcedure;
+
+        // command.Parameters.AddWithValue("@SalespersonId", salespersonId);
+
+        //await connection.OpenAsync();
+        //var result = await command.ExecuteScalarAsync();
+        //return (int)result;
+        //}
+
+        public async Task<int> DeleteSalespersonAsync(int id)
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                using (var command = new SqlCommand("sp_DeleteSalesperson", connection))
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@SalespersonId", id);
+            using var connection = new SqlConnection(_connectionString);
+            using var command = new SqlCommand("sp_DeleteSalesperson", connection);
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.AddWithValue("@SalespersonId", id);
 
-                    await connection.OpenAsync();
-                    int rowsAffected = await command.ExecuteNonQueryAsync();
+            await connection.OpenAsync();
 
-                    return rowsAffected > 0;
-                }
-            }
+            using var reader = await command.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            return reader.GetInt32(reader.GetOrdinal("Result"));
         }
+
+
+
 
         public async Task<bool> SalespersonExistsAsync(int id)
         {
