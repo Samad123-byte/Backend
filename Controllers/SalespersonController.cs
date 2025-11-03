@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
-using Backend.Models;
 using Backend.IServices;
+using Backend.Models;
+using Backend.Service;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controllers
 {
@@ -34,43 +35,16 @@ namespace Backend.Controllers
             return Ok(salesperson);
         }
 
-        // ✅ POST: api/Salesperson/add
         [HttpPost("add")]
         public async Task<IActionResult> Add([FromBody] Salesperson salesperson)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            var created = await _salespersonService.CreateSalespersonAsync(salesperson);
-            return Ok(created);
-        }
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-        // ✅ POST: api/Salesperson/update
-        [HttpPost("update")]
-        public async Task<IActionResult> Update([FromBody] Salesperson salesperson)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            var exists = await _salespersonService.SalespersonExistsAsync(salesperson.SalespersonId);
-            if (!exists) return NotFound();
-
-            var success = await _salespersonService.UpdateSalespersonAsync(salesperson);
-            return success ? Ok("Salesperson updated successfully.") : BadRequest("Failed to update salesperson.");
-        }
-
-        // ✅ POST: api/Salesperson/delete
-        [HttpPost("delete")]
-        public async Task<IActionResult> Delete([FromBody] DeleteRequest request)
-        {
             try
             {
-                var exists = await _salespersonService.SalespersonExistsAsync(request.Id);
-                if (!exists) return NotFound(new { success = false, message = "Salesperson not found." });
-
-                var success = await _salespersonService.DeleteSalespersonAsync(request.Id);
-
-                if (!success)
-                    return BadRequest(new { success = false, message = "Failed to delete salesperson." });
-
-                return Ok(new { success = true, message = "Salesperson deleted successfully." });
+                var created = await _salespersonService.CreateSalespersonAsync(salesperson);
+                return Ok(new { success = true, message = "Salesperson added successfully!", data = created });
             }
             catch (InvalidOperationException ex)
             {
@@ -78,14 +52,44 @@ namespace Backend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { success = false, message = "An unexpected error occurred." });
+                return StatusCode(500, new { success = false, message = "Server error: " + ex.Message });
             }
         }
-    }
 
-    // Request model for delete endpoint
-    public class DeleteRequest
-    {
-        public int Id { get; set; }
+
+
+
+        // ✅ POST: api/Salesperson/update
+        [HttpPost("update")]
+        public async Task<IActionResult> Update([FromBody] Salesperson salesperson)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            await _salespersonService.UpdateSalespersonAsync(salesperson);
+
+            return Ok("Salesperson updated successfully.");
+        }
+
+        // ✅ POST: api/Salesperson/delete
+        [HttpPost("delete")]
+        public async Task<IActionResult> Delete([FromBody] DeleteRequest request)
+        {
+            // Use the concrete service, not the interface
+            var service = (SalespersonService)_salespersonService;
+            var (success, message) = await service.DeleteSalespersonLogicAsync(request.Id);
+
+            return success
+                ? Ok(new { success, message })
+                : BadRequest(new { success, message });
+        }
+
+
+
+        // Request model for delete endpoint
+        public class DeleteRequest
+        {
+            public int Id { get; set; }
+        }
     }
 }
